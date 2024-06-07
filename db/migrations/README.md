@@ -1,0 +1,2 @@
+This folder contains the SQL migrations to setup the database for the Abacus Notification Services database.
+Please see the [sqlx MigrationSource Documentation](https://docs.rs/sqlx/latest/sqlx/migrate/trait.MigrationSource.html) for details on migration file naming conventions.

@@ -1,0 +1,112 @@
+<script>
+    $(document).ready(() => {
+        fetchApiTokens();
+    });
+    
+    function resetModal() {
+        $("#newTokenName").val(null);
+        $("#newTokenExpiration").val(null);
+        $("#createTokenModalButton").show();
+        $("#tokenText").text("");
+        $("#tokenTextContainer").hide();
+    }
+    
+    function deleteApiToken(tokenId) {
+        console.log("Deleting token ", tokenId);
+        $.ajax({
+            url: "/users/delete-api-token",
+            method: "POST",
+            contentType: "application/json",    
+            data: JSON.stringify({tokenId})
+        }).done(() => {
+           fetchApiTokens();     
+        });
+    }
+    
+    function fetchApiTokens() {
+       $.ajax("/users/api-tokens").done(tokens => {
+            const tokenRows = tokens.map(token => 
+                `<tr>
+                    <td>${token.tokenId}</td>
+                    <td>${token.tokenName}</td>
+                    <td>${ moment(token.tokenExpiration, "YYYY-MM-DD HH:mm:ss Z").fromNow()}</td>
+                        <td><button class="btn btn-outline-danger" onclick="deleteApiToken(${token.tokenId})"><i class="bi bi-trash"></i></button></td>    
+                </tr>`
+            );
+            $("#tokensTable > tbody").html(tokenRows);
+       });
+    }
+    
+    function createApiToken() {
+        const data = {
+            tokenName: $("#newTokenName").val(),
+            tokenExpiration: moment($("#newTokenExpiration").val()).format("YYYY-MM-DD HH:mm:ss Z")
+        };
+        $.ajax({
+            url: "/users/create-api-token",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(data)
+        }).done((data) =>{
+             $("#createTokenModalButton").hide();
+             $("#tokenText").text(data);
+             $("#tokenTextContainer").show();
+             fetchApiTokens();
+        }).fail(() => {
+            console.error("An error occurred");        
+        });
+    }
+</script>
+<div style="grid-area: tokens;">
+    <h5>API Tokens</h5>
+    
+    <table id="tokensTable" class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Token ID</th>
+                <th>Token Description</th>
+                <th>Expires</th>
+                <th><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTokenModal" title="Create API token"><i class="bi bi-plus-circle"></i></button></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="newTokenModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Create API Token</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="resetModal();"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newApiTokenForm">
+                    <label for="newTokenName" class="form-label">Token Description</label>
+                    <input
+                        id="newTokenName"
+                        name="tokenName"
+                        type="text"
+                        class="form-control"
+                        placeholder="Token Description"
+                    />
+                    <label for="newTokenExpiration" class="form-label">Token Expiration</label>
+                    <input
+                        id="newTokenExpiration"
+                        name="tokenExpiration"
+                        type="date"
+                        class="form-control"
+                        placeholder="Token expiration"
+                    />
+                </form>
+                <div id="tokenTextContainer" style="display: none;">
+                    <em>Note: You will only see this token once. We do not store any tokens.</em>
+                    <pre id="tokenText" style="white-space: pre-wrap; word-wrap: break-word;" class="bg-light"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="createTokenModalButton" type="button" class="btn btn-primary" onclick="createApiToken();">Create Token</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,35 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/ui/">Abacus Notification Services</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    {% if active_route == "/ui/" %}
+                    <a class="nav-link active" aria-current="page" href="/ui/">Home</a>
+                    {% else %}
+                    <a class="nav-link" href="/ui/">Home</a>
+                    {% endif %}
+                </li>
+                <li>
+                    <!-- Show dashboard if user is authenticated -->
+                    {% if user_auth and active_route == "/ui/dashboard"  %}
+                    <a class="nav-link active" aria-current="page" href="/ui/dashboard">Dashboard</a>
+                    {% elif user_auth %}
+                    <a class="nav-link" href="/ui/dashboard">Dashboard</a>
+                    {% endif %}
+                </li>
+            </ul>
+            <div class="d-flex" style="gap: 5px; align-items: baseline;">
+                {% if user_auth %}
+                <span class="navbar-text">Welcome {{ user_auth['sub'] }}</span>
+                <a class="btn btn-outline-light" href="logout">Logout</a>
+                {% else %}
+                <a class="btn btn-outline-light" type="login" href="login">Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>

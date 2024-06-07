@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock title %}
+{% block body %}
+<script>
+    var checkUsernameAvailableReq = null;
+
+    function validateUserName() {
+        $("#registerUserIdBox").toggleClass("is-valid", false);
+        const userName = $("#registerUserIdBox").val();
+        if (userName.length <= 3) {
+            $("#registerUsernameFeedback").text("Username should be 4 characters at minimum.")
+            $("#registerUserIdBox").toggleClass("is-invalid", true);
+            return;
+        }
+        $("#registerUserIdBox").toggleClass("is-invalid", false);
+
+        if (checkUsernameAvailableReq && checkUsernameAvailableReq.readyState < 4)
+            checkUsernameAvailableReq.abort();
+
+        checkUsernameAvailableReq = $.ajax({
+            url: "/users/username-available",
+            method: "GET",
+            data: { userName }
+        }).done(available => {
+            if (!available) {
+                $("#registerUsernameFeedback").text("Please choose a difference username.")
+                $("#registerUserIdBox").toggleClass("is-invalid", true);
+                $("#registerUserIdBox").toggleClass("is-valid", false);
+            } else {
+                $("#registerUserIdBox").toggleClass("is-invalid", false);
+                $("#registerUserIdBox").toggleClass("is-valid", true);
+            }
+        });
+    }
+
+    function toggleRegister() {
+        $("#loginForm").hide();
+        $("#loginButtonGroup").toggleClass("visually-hidden", true);
+        $("#registerForm").show();
+        $("#registerButtonGroup").toggleClass("visually-hidden", false);
+    }
+
+    function toggleLogin() {
+        $("#loginForm").show();
+        $("#loginButtonGroup").toggleClass("visually-hidden", false);
+        $("#registerForm").hide();
+        $("#registerButtonGroup").toggleClass("visually-hidden", true);
+    }
+
+    function showLoadingPanel() {
+        $("#loadingPanel").toggleClass("visually-hidden", false);
+    }
+
+    function hideLoadingPanel() {
+        $("#loadingPanel").toggleClass("visually-hidden", true);
+    }
+
+    function login() {
+        showLoadingPanel();
+        $.ajax({
+            url: "/users/login",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ userId: $("#loginUserId").val(), password: $("#loginPassword").val() })
+        }).done(() => {
+            hideLoadingPanel();
+            window.location = "/ui/dashboard";
+        }).fail(() => {
+            hideLoadingPanel();
+            $("#loginValidationFeedback").text("Invalid username or password.");
+            $("#loginPassword").toggleClass("is-invalid", true);
+            $("#loginUserId").toggleClass("is-invalid", true);
+        });
+    }
+
+    function register() {
+        showLoadingPanel();
+        $.ajax({
+            url: "/users/register",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ userId: $("#registerUserIdBox").val(), password: $("#registerPassword").val() })
+        }).done(() => {
+            hideLoadingPanel();
+            window.location = "/ui/dashboard";
+        }).fail(() => {
+            hideLoadingPanel();
+            $("#registerUserIdBox").toggleClass("is-invalid", true);
+        });
+    }
+
+    function validatePasswords() {
+        $("#registerPassword").toggleClass(["is-valid", "is-invalid"], false);
+        $("#registerConfirmPass").toggleClass(["is-valid", "is-invalid"], false);
+
+        const pass = $("#registerPassword").val();
+        const confirmPass = $("#registerConfirmPass").val();
+
+        if (pass != confirmPass) {
+            $("#registerPasswordsFeedback").text("Passwords do not match")
+            $("#registerPassword").toggleClass("is-invalid", true);
+            $("#registerConfirmPass").toggleClass("is-invalid", true);
+        } else if (pass.length < 4 || confirmPass.length < 4) {
+            $("#registerPasswordsFeedback").text("Passwords must be 4 characters minimum.")
+            $("#registerPassword").toggleClass("is-invalid", true);
+            $("#registerConfirmPass").toggleClass("is-invalid", true);
+        } else {
+            $("#registerPassword").toggleClass("is-valid", true);
+            $("#registerConfirmPass").toggleClass("is-valid", true);
+        }
+
+    }
+
+    function updateRegisterButtonDisabled() {
+        const registerPassValid = $("#registerPassword").hasClass("is-valid");
+        const registerConfirmPassValid = $("#registerConfirmPass").hasClass("is-valid");
+        const userNameValid = $("#registerUserIdBox").hasClass("is-valid");
+        if (registerPassValid && registerConfirmPassValid && userNameValid) {
+            $("#registerButton").prop("disabled", false);
+        } else {
+            $("#registerButton").prop("disabled", true);
+        }
+    }
+
+    updateRegisterButtonDisabled();
+
+    function updateLoginButtonDisabled() {
+        const userNameInvalid = $("#loginUserId").val().length < 3;
+        const passwordInvalid = $("#loginPassword").val().length < 3;
+        if (userNameInvalid || passwordInvalid) {
+            $("#loginButton").prop("disabled", true);
+        } else {
+            $("#loginButton").prop("disabled", false);
+        }
+    }
+</script>
+<div style="display: flex; padding: 20px; align-items: center; flex-direction: column;">
+    <div class="bg-light container" style="width: 300px; padding: 10px; border-radius: 5px; position: relative;">
+        <div id="loadingPanel" class="d-flex justify-content-center align-items-center bg-light visually-hidden"
+            style="z-index: 100; position: absolute; height: 100%; width: 100%; margin: -10px; opacity: 0.6;">
+            <div class="spinner-grow text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <form id="loginForm" onkeyup="if (event.key == 'Enter') { login(); }">
+            <div class="mb-3">
+                <label for="loginUserId" class="form-label">Username</label>
+                <input
+                    type="username"
+                    class="form-control"
+                    id="loginUserId"
+                    minlength="4"
+                    onkeyup="$('#loginUserId').toggleClass('is-invalid', $('#loginUserId').val().length < 4); updateLoginButtonDisabled();"
+                    required
+                />
+            </div>
+            <div class="mb-3">
+                <label for="loginPassword" class="form-label">Password</label>
+                <input
+                    type="password"
+                    class="form-control"
+                    id="loginPassword"
+                    minlength="4"
+                    onkeyup="$('#loginPassword').toggleClass('is-invalid', $('#loginPassword').val().length < 4); updateLoginButtonDisabled();"
+                    required
+                />
+                <div class="invalid-feedback" id="loginValidationFeedback">
+                    Please ensure username and password meet minimum length requirements.
+                </div>
+            </div>
+        </form>
+
+        <form id="registerForm" style="display: none;" onkeyup="if (event.key == 'Enter'){ register(); }">
+            <div class="mb-3">
+                <label for="registerUserIdBox" class="form-label">Username</label>
+                <input type="username" class="form-control" id="registerUserIdBox"
+                    onkeyup="validateUserName(); updateRegisterButtonDisabled();" name="userId" minlength="3"
+                    maxlength="64" required>
+                <div id="registerUsernameFeedback" class="invalid-feedback"></div>
+            </div>
+            <div class="mb-3">
+                <label for="registerPassword" class="form-label">Password</label>
+                <input type="password" class="form-control" id="registerPassword" name="password"
+                    onkeyup="validatePasswords(); updateRegisterButtonDisabled();" minlength="4" maxlength="32"
+                    required>
+            </div>
+            <div class="mb-3" id="confirmPassGroup">
+                <label for="registerConfirmPass" class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" id="registerConfirmPass"
+                    onkeyup="validatePasswords(); updateRegisterButtonDisabled();" minlength="4" maxlength="32"
+                    required>
+                <div id="registerPasswordsFeedback" class="invalid-feedback"></div>
+            </div>
+        </form>
+
+        <hr />
+        <div class="d-flex" style="justify-content: space-between;" id="loginButtonGroup">
+            <span class="form-text">Click <a href="#" onclick="toggleRegister();">here</a> to Register.</span>
+            <button id="loginButton" class="btn btn-primary" onclick="login();" disabled>Login</button>
+        </div>
+        <div class="d-flex visually-hidden" style="justify-content: space-between" id="registerButtonGroup">
+            <span class="form-text">Click <a href="#" onclick="toggleLogin();">here</a> to Login.</span>
+            <button id="registerButton" class="btn btn-primary" onclick="register();" disabled>Register</button>
+        </div>
+    </div>
+</div>
+{% endblock body %}

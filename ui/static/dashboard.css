@@ -1,0 +1,26 @@
+.dashboard-grid {
+    display: grid;
+    gap: 5px;
+    grid-template-columns: 50% 50%;
+    grid-template-areas:
+        "info tokens"
+        "admin tokens";
+}
+
+@media only screen and (max-width: 800px) {
+    .dashboard-grid {
+        grid-template-columns: auto;
+        grid-template-areas:
+            "info"
+            "admin"
+            "tokens";
+    }
+    
+}
+
+.profile-info-grid {
+    display: grid;
+    grid-template-columns: min-content auto;
+    grid-template-rows: min-content min-content;
+    gap: 5px;
+}

@@ -1,0 +1,22 @@
+<div style="grid-area: admin;">
+    <h5>Disable User</h5>
+    <form action="/users/disable" method="post" style="display: flex; gap: 5px; margin-bottom: 5px;">
+        <div class="col-auto">
+            <div class="input-group">
+                <div class="input-group-text">Username</div>
+                <input type="username" class="form-control" id="userName" name="userId" placeholder="Username"/>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Disable</button>
+    </form>
+    <h5>Disable API Token</h5>
+    <form action="/tokens/disable" method="post" style="display: flex; gap: 5px;">
+        <div class="col-auto">
+            <div class="input-group">
+                <div class="input-group-text">Token ID</div>
+                <input type="text" class="form-control" name="tokenId" placeholder="Token ID"/>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Disable</button>
+    </form>
+</div>

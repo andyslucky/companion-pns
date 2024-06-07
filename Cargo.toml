@@ -1,0 +1,24 @@
+[package]
+name = "abacus-pns"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "4"
+actix-files = "0.6.5"
+actix-governor = "0.4"
+serde = {version = "1.0", features = ["derive"]}
+serde_json = "1.0"
+jsonwebtoken = "9"
+anyhow = "1.0.86"
+thiserror = "1.0"
+futures = "0.3.30"
+tera = "1.19.1"
+env_logger = "0.11.3"
+log = "0.4.21"
+dotenvy = "0.15.7"
+sqlx = {version = "0.7.4", features=["runtime-tokio", "postgres", "migrate", "time"]}
+time = "0.3.36"
+bcrypt = "0.15.1"

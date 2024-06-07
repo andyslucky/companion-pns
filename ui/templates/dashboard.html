@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock title %}
+{% block stylesheets %}
+    {{ super() }}
+    <link href="/static/dashboard.css" rel="stylesheet" />
+{% endblock stylesheets %}
+{% block body %}
+<div style="padding: 5px;">
+    <h2>User Dashboard</h2>
+    <div class="dashboard-grid">
+        {% include "dashboard-widgets/profile.html" %}
+        {% if 'ADMIN' in user_auth['roles'] %}
+        {% include "dashboard-widgets/admin.html" %}
+        {% endif %}
+        {% include "dashboard-widgets/tokens.html" %}
+    </div>
+</div>
+{% endblock body %}
