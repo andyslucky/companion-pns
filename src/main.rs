@@ -9,7 +9,7 @@ use actix_web::{
     error::ErrorUnauthorized,
     get, route, web,
     web::Data,
-    App, HttpMessage, HttpResponse, HttpServer, Responder,
+    App, HttpMessage, HttpResponse, HttpServer,
 };
 use anyhow::Context;
 use futures::future::{
@@ -35,11 +35,7 @@ pub struct TokenKeys {
 }
 
 #[route("/", method = "GET", method = "POST")]
-async fn home(
-    tera: web::Data<Tera>,
-    tera_context: web::ReqData<tera::Context>,
-    user_auth_token: Option<web::ReqData<UserAuthToken>>,
-) -> HttpResponse {
+async fn home(tera: web::Data<Tera>, tera_context: web::ReqData<tera::Context>, user_auth_token: Option<web::ReqData<UserAuthToken>>) -> HttpResponse {
     let mut context = tera::Context::new();
     context.extend((*tera_context).clone());
     match user_auth_token {
@@ -85,11 +81,7 @@ async fn logout() -> HttpResponse {
 }
 
 #[route("/dashboard", method = "GET", method = "POST")]
-async fn dashboard(
-    user_auth_token: web::ReqData<UserAuthToken>,
-    tera_context: web::ReqData<tera::Context>,
-    tera: web::Data<Tera>,
-) -> HttpResponse {
+async fn dashboard(user_auth_token: web::ReqData<UserAuthToken>, tera_context: web::ReqData<tera::Context>, tera: web::Data<Tera>) -> HttpResponse {
     let mut context = tera::Context::new();
     context.extend((*tera_context).clone());
     context.insert("user_auth", user_auth_token.deref());
@@ -108,14 +100,10 @@ async fn init_db_pool() -> anyhow::Result<PgPool> {
     let db_user = env::var("DB_USER").context("Missing DB_USER environment variable")?;
     let db_port = env::var("DB_PORT").ok().unwrap_or("5432".to_string());
     let db_pass;
-    if let Some(pass) = env::var("DB_PASSWORD_FILE")
-        .ok()
-        .and_then(|pwfile| std::fs::read_to_string(pwfile).ok())
-    {
+    if let Some(pass) = env::var("DB_PASSWORD_FILE").ok().and_then(|pwfile| std::fs::read_to_string(pwfile).ok()) {
         db_pass = pass;
     } else {
-        db_pass = env::var("DB_PASSWORD")
-            .context("Missing DB_PASSWORD or DB_PASSWORD_FILE environment variable")?;
+        db_pass = env::var("DB_PASSWORD").context("Missing DB_PASSWORD or DB_PASSWORD_FILE environment variable")?;
     }
     let db_max_connections: u32 = env::var("DB_MAX_CONNECTIONS")
         .ok()
@@ -123,13 +111,7 @@ async fn init_db_pool() -> anyhow::Result<PgPool> {
         .unwrap_or(10);
     let pool = PgPoolOptions::new()
         .max_connections(db_max_connections)
-        .connect(
-            format!(
-                "postgress://{}:{}@{}:{}/{}",
-                db_user, db_pass, db_host, db_port, db_name
-            )
-            .as_str(),
-        )
+        .connect(format!("postgress://{}:{}@{}:{}/{}", db_user, db_pass, db_host, db_port, db_name).as_str())
         .await?;
     let migrator = Migrator::new(Path::new("db/migrations")).await?;
     migrator.run(&pool).await?;
@@ -152,10 +134,7 @@ async fn main() -> std::io::Result<()> {
     }
     env_logger::init_from_env(env_logger::Env::new().filter_or("LOG_LEVEL", "info"));
 
-    let pool: PgPool = init_db_pool()
-        .await
-        .context("Failed to connect to database")
-        .map_err(std::io::Error::other)?;
+    let pool: PgPool = init_db_pool().await.context("Failed to connect to database").map_err(std::io::Error::other)?;
 
     let rate_limit_config = security::create_gov_config().map_err(std::io::Error::other)?;
     let token_secret;
@@ -166,9 +145,7 @@ async fn main() -> std::io::Result<()> {
         token_secret = secret;
     } else {
         token_secret = env::var("TOKEN_SECRET_KEY")
-            .context(
-                "Could not find token secret. Please set the TOKEN_SECRET_KEY environment variable",
-            )
+            .context("Could not find token secret. Please set the TOKEN_SECRET_KEY environment variable")
             .map_err(std::io::Error::other)?;
     }
 
@@ -178,9 +155,7 @@ async fn main() -> std::io::Result<()> {
                 encoding_key: EncodingKey::from_secret(token_secret.as_ref()),
                 decoding_key: DecodingKey::from_secret(token_secret.as_ref()),
             }))
-            .app_data(web::Data::new(
-                Tera::new("ui/templates/**/*.html").expect(""),
-            ))
+            .app_data(web::Data::new(Tera::new("ui/templates/**/*.html").expect("")))
             .app_data(web::Data::new(pool.clone()))
             .service(Files::new("/static", "./ui/static").show_files_listing())
             .service(web::redirect("/", "/ui/"))
@@ -197,9 +172,7 @@ async fn main() -> std::io::Result<()> {
                         } else {
                             Right(ready(Ok(ServiceResponse::new(
                                 req.into_parts().0,
-                                HttpResponse::TemporaryRedirect()
-                                    .append_header(("Location", "/ui/login"))
-                                    .finish(),
+                                HttpResponse::TemporaryRedirect().append_header(("Location", "/ui/login")).finish(),
                             ))))
                         }
                     })
@@ -222,11 +195,7 @@ async fn main() -> std::io::Result<()> {
                             let extensions = req.extensions();
                             extensions.get::<UserAuthToken>().is_some()
                         };
-                        if authorized
-                            || (req.path() == "/users/login"
-                                || req.path() == "/users/register"
-                                || req.path() == "/users/username-available")
-                        {
+                        if authorized || (req.path() == "/users/login" || req.path() == "/users/register" || req.path() == "/users/username-available") {
                             Left(srv.call(req))
                         } else {
                             Right(ready(Err(ErrorUnauthorized("Access denied"))))
@@ -247,14 +216,9 @@ async fn main() -> std::io::Result<()> {
                     .wrap(actix_governor::Governor::new(&rate_limit_config))
                     .service(api::devices::register_user_device),
             )
-            .wrap(actix_web::middleware::Logger::new(
-                "%a %r %s %{User-Agent}i",
-            ))
+            .wrap(actix_web::middleware::Logger::new("%a %r %s %{User-Agent}i"))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
     .await
 }
-
-
-

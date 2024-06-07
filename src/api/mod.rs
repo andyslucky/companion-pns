@@ -1,22 +1,24 @@
-
-use std::fmt::Display;
-use actix_web::{HttpResponse, http::StatusCode};
+use actix_web::{http::StatusCode, HttpResponse};
 use serde::Serialize;
+use std::fmt::Display;
 
-pub mod users;
 pub mod devices;
+pub mod users;
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorResponse {
     #[serde(skip_serializing)]
-    status : StatusCode,
-    message : String
+    status: StatusCode,
+    message: String,
 }
 
 impl ErrorResponse {
-    pub fn new<S : AsRef<str>>(status : StatusCode, message : S) -> ErrorResponse {
-        return ErrorResponse { status,message:  String::from(message.as_ref())};
+    pub fn new<S: AsRef<str>>(status: StatusCode, message: S) -> ErrorResponse {
+        return ErrorResponse {
+            status,
+            message: String::from(message.as_ref()),
+        };
     }
 }
 

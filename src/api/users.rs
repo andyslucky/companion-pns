@@ -1,10 +1,7 @@
 use crate::{
     api::ErrorResponse,
     db::{self, FetchUserError, MapActixError, User},
-    security::{
-        api_token::ApiToken,
-        user_auth_token::*,
-    },
+    security::{api_token::ApiToken, user_auth_token::*},
     TokenKeys,
 };
 use actix_web::{
@@ -30,22 +27,12 @@ pub async fn register_user(
     token_keys: web::Data<TokenKeys>,
     db_pool: web::Data<sqlx::postgres::PgPool>,
 ) -> actix_web::Result<HttpResponse> {
-    let user = db::create_user(&**db_pool, &request_body.user_id, &request_body.password)
-        .await
-        .map_err(
-            |e| match e.root_cause().downcast_ref::<sqlx::error::Error>() {
-                Some(sqlx::Error::Database(dbe)) if dbe.is_unique_violation() => {
-                    ErrorResponse::new(
-                        StatusCode::BAD_REQUEST,
-                        "Please choose a different username",
-                    )
-                }
-                _ => ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "An error occurred while registering",
-                ),
-            },
-        )?;
+    let user = db::create_user(&**db_pool, &request_body.user_id, &request_body.password).await.map_err(|e| {
+        match e.root_cause().downcast_ref::<sqlx::error::Error>() {
+            Some(sqlx::Error::Database(dbe)) if dbe.is_unique_violation() => ErrorResponse::new(StatusCode::BAD_REQUEST, "Please choose a different username"),
+            _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "An error occurred while registering"),
+        }
+    })?;
 
     Ok(create_token_response(&user, &token_keys).1.finish())
 }
@@ -57,18 +44,12 @@ struct UsernameAvailableQueryParams {
 }
 
 #[get("/username-available")]
-async fn check_username_available(
-    query_params: web::Query<UsernameAvailableQueryParams>,
-    db_pool: web::Data<PgPool>,
-) -> actix_web::Result<HttpResponse> {
+async fn check_username_available(query_params: web::Query<UsernameAvailableQueryParams>, db_pool: web::Data<PgPool>) -> actix_web::Result<HttpResponse> {
     let available: bool = sqlx::query("SELECT TRUE as exists FROM users WHERE user_name = $1;")
         .bind(&query_params.user_name)
         .fetch_optional(&**db_pool)
         .await
-        .map_actix_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "An error occurred checking if username exists",
-        )?
+        .map_actix_error(StatusCode::INTERNAL_SERVER_ERROR, "An error occurred checking if username exists")?
         .is_none();
 
     Ok(HttpResponse::Ok().json(available))
@@ -80,34 +61,23 @@ pub async fn user_login(
     token_keys: web::Data<TokenKeys>,
     db_pool: web::Data<PgPool>,
 ) -> actix_web::Result<HttpResponse> {
-    let user = db::fetch_user(&**db_pool, &request_body.user_id, &request_body.password)
-        .await
-        .map_err(|e| match e.root_cause().downcast_ref::<FetchUserError>() {
-            Some(FetchUserError::UserNotFound) | Some(FetchUserError::InvalidPassword) => {
-                ErrorResponse::new(StatusCode::BAD_REQUEST, "Invalid username or password")
-            }
-            None => ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "An error occurred logging in.",
-            ),
-        })?;
+    let user =
+        db::fetch_user(&**db_pool, &request_body.user_id, &request_body.password)
+            .await
+            .map_err(|e| match e.root_cause().downcast_ref::<FetchUserError>() {
+                Some(FetchUserError::UserNotFound) | Some(FetchUserError::InvalidPassword) => {
+                    ErrorResponse::new(StatusCode::BAD_REQUEST, "Invalid username or password")
+                }
+                None => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "An error occurred logging in."),
+            })?;
 
     Ok(create_token_response(&user, &token_keys).1.finish())
 }
 
-fn create_token_response(
-    user: &User,
-    token_keys: &TokenKeys,
-) -> (UserAuthToken, HttpResponseBuilder) {
+fn create_token_response(user: &User, token_keys: &TokenKeys) -> (UserAuthToken, HttpResponseBuilder) {
     let expiry = time::OffsetDateTime::now_utc() + time::Duration::minutes(15);
-    let user_auth_token = UserAuthToken::new(
-        user.user_name.clone(),
-        user.roles.clone(),
-        expiry.unix_timestamp() as u64,
-    );
-    let token = user_auth_token
-        .encode(&token_keys.encoding_key)
-        .expect("Could not create token");
+    let user_auth_token = UserAuthToken::new(user.user_name.clone(), user.roles.clone(), expiry.unix_timestamp() as u64);
+    let token = user_auth_token.encode(&token_keys.encoding_key).expect("Could not create token");
 
     let mut redirect_response: HttpResponseBuilder = HttpResponse::Ok();
     redirect_response.cookie(
@@ -136,7 +106,14 @@ async fn create_api_token(
     token_keys: web::Data<TokenKeys>,
     db_pool: web::Data<PgPool>,
 ) -> actix_web::Result<HttpResponse> {
-    let api_token : ApiToken = db::create_api_token(&**db_pool, &user_auth_token.sub, &create_token_request.token_name, &create_token_request.token_expiration).await.map_err(|e| {
+    let api_token: ApiToken = db::create_api_token(
+        &**db_pool,
+        &user_auth_token.sub,
+        &create_token_request.token_name,
+        &create_token_request.token_expiration,
+    )
+    .await
+    .map_err(|e| {
         error!("Failed to create api token {}", e);
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create api token.")
     })?;
@@ -168,10 +145,7 @@ async fn delete_api_token(
     .bind(&delete_api_token_request.token_id)
     .execute(&**db_pool)
     .await
-    .map_actix_error(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "An error occurred while deleting API token",
-    )?;
+    .map_actix_error(StatusCode::INTERNAL_SERVER_ERROR, "An error occurred while deleting API token")?;
 
     Ok(HttpResponse::Ok().finish())
 }
@@ -186,10 +160,7 @@ struct ApiTokenInfo {
 }
 
 #[get("/api-tokens")]
-async fn user_api_tokens(
-    user_auth_token: web::ReqData<UserAuthToken>,
-    db_pool: web::Data<PgPool>,
-) -> actix_web::Result<HttpResponse> {
+async fn user_api_tokens(user_auth_token: web::ReqData<UserAuthToken>, db_pool: web::Data<PgPool>) -> actix_web::Result<HttpResponse> {
     let tokens: Vec<ApiTokenInfo> = sqlx::query(
         r#"
         SELECT token_id, token_description as token_name, token_expiration
@@ -228,9 +199,6 @@ async fn add_admin_user(
         .bind(Role::ADMIN.to_string())
         .execute(&**db_pool)
         .await
-        .map_actix_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "An error occurred while setting user to admin",
-        )?;
+        .map_actix_error(StatusCode::INTERNAL_SERVER_ERROR, "An error occurred while setting user to admin")?;
     Ok(HttpResponse::Ok().finish())
 }

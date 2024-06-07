@@ -1,11 +1,11 @@
 use std::fmt::Display;
 
-use actix_web::{post, web, HttpResponse, http::StatusCode};
+use crate::db;
+use actix_web::{http::StatusCode, post, web, HttpResponse};
 use serde::Deserialize;
 use sqlx::PgPool;
-use crate::db;
 
-use crate::{security::api_token::ApiToken, api::ErrorResponse};
+use crate::{api::ErrorResponse, security::api_token::ApiToken};
 
 #[derive(Deserialize, Debug)]
 pub enum DevicePlatform {
@@ -29,17 +29,17 @@ struct DeviceRegistrationRequest {
 /// Registers a device
 #[post("/devices/register")]
 async fn register_user_device(
-    db_pool : web::Data<PgPool>,
+    db_pool: web::Data<PgPool>,
     request: web::Json<DeviceRegistrationRequest>,
     api_token: web::ReqData<ApiToken>,
-    ) -> actix_web::Result<HttpResponse> {
+) -> actix_web::Result<HttpResponse> {
     db::register_device(&**db_pool, &api_token.sub, &request.device_id, &request.device_platform)
-    .await
-    .map_err(|e| match e.root_cause().downcast_ref::<sqlx::error::Error>() {
-        Some(sqlx::error::Error::Database(dbe)) if dbe.is_unique_violation() => {
-            ErrorResponse::new(StatusCode::BAD_REQUEST, "Device already registered.").into()
-        }
-        _ => actix_web::error::ErrorInternalServerError("An error occurred while registering"),
-    })?;
+        .await
+        .map_err(|e| match e.root_cause().downcast_ref::<sqlx::error::Error>() {
+            Some(sqlx::error::Error::Database(dbe)) if dbe.is_unique_violation() => {
+                ErrorResponse::new(StatusCode::BAD_REQUEST, "Device already registered.").into()
+            }
+            _ => actix_web::error::ErrorInternalServerError("An error occurred while registering"),
+        })?;
     Ok(HttpResponse::Ok().json("Registered"))
 }

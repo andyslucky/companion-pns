@@ -70,9 +70,7 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let token_keys: &Data<TokenKeys> = req
-            .app_data::<Data<TokenKeys>>()
-            .expect("Could not find token keys");
+        let token_keys: &Data<TokenKeys> = req.app_data::<Data<TokenKeys>>().expect("Could not find token keys");
         match UserAuthToken::from_service_request(&req, &token_keys.decoding_key) {
             Ok(api_token) => {
                 req.extensions_mut().insert(api_token);
@@ -128,9 +126,7 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let token_keys: &Data<TokenKeys> = req
-            .app_data::<Data<TokenKeys>>()
-            .expect("Could not find token keys");
+        let token_keys: &Data<TokenKeys> = req.app_data::<Data<TokenKeys>>().expect("Could not find token keys");
         let api_token = ApiToken::from_service_request(&req, &token_keys.decoding_key);
 
         // Get username from token
@@ -147,23 +143,16 @@ where
         let user_enabled = async move {
             match user {
                 Some(val) => {
-                    return db::user_is_enabled(&db_pool, &val).await.map_err(|e| {
-                        match e.root_cause().downcast_ref::<FetchUserError>() {
-                            Some(FetchUserError::UserNotFound) => {
-                                ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied.")
-                            }
-                            _ => ErrorResponse::new(
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                "An error occurred",
-                            ),
-                        }
-                    });
+                    return db::user_is_enabled(&db_pool, &val)
+                        .await
+                        .map_err(|e| match e.root_cause().downcast_ref::<FetchUserError>() {
+                            Some(FetchUserError::UserNotFound) => ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied."),
+                            _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "An error occurred"),
+                        });
                 }
                 // If there is no username, then the token is missing and the request is Unauthorized
                 None => {
-                    return Err(
-                        ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied").into(),
-                    );
+                    return Err(ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied").into());
                 }
             }
         };
@@ -178,23 +167,11 @@ where
     }
 }
 
-pub fn create_gov_config(
-) -> anyhow::Result<GovernorConfig<PeerIpKeyExtractor, NoOpMiddleware<QuantaInstant>>> {
-    let rate_limit_time: u64 = env::var("RATE_LIMIT_TIME")
-        .ok()
-        .map(|val| val.parse().ok())
-        .flatten()
-        .unwrap_or(3);
+pub fn create_gov_config() -> anyhow::Result<GovernorConfig<PeerIpKeyExtractor, NoOpMiddleware<QuantaInstant>>> {
+    let rate_limit_time: u64 = env::var("RATE_LIMIT_TIME").ok().map(|val| val.parse().ok()).flatten().unwrap_or(3);
 
-    let rate_limit_burst_size: u32 = env::var("RATE_LIMIT_BURST_SIZE")
-        .ok()
-        .map(|val| val.parse().ok())
-        .flatten()
-        .unwrap_or(20);
-    info!(
-        "Rate limiting configured to {} requests / {} seconds",
-        rate_limit_burst_size, rate_limit_time
-    );
+    let rate_limit_burst_size: u32 = env::var("RATE_LIMIT_BURST_SIZE").ok().map(|val| val.parse().ok()).flatten().unwrap_or(20);
+    info!("Rate limiting configured to {} requests / {} seconds", rate_limit_burst_size, rate_limit_time);
     // TODO Add sub (user_id) check (instead of just ip address) in the governor.
     GovernorConfigBuilder::default()
         .per_second(rate_limit_time)
