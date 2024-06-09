@@ -10,9 +10,19 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v2
-            - name: Check code style
-              run: cargo fmt --check
-            - name: Build
+            - name: Install Rust
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: "1.78"
+                  override: true
+                  components: rustfmt, clippy
+            - name: Check Code Style
+              uses: actions-rs/cargo@v1
+              command: fmt --check
+            - name: Run Unit Tests
+              uses: actions-rs/cargo@v1
+              command: test
+            - name: Build Image
               uses: docker/build-push-action@v5
               with:
                   file: ./Dockerfile
