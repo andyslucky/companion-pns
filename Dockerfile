@@ -2,6 +2,8 @@ FROM rust:1.78-slim-bookworm as builder
 ENV CARGO_TERM_COLOR=always
 COPY ./ /app
 WORKDIR /app
+RUN cargo fmt --check
+RUN cargo test
 RUN cargo build --locked --release
 
 # Create runner
