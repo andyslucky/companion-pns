@@ -18,10 +18,12 @@ jobs:
                   components: rustfmt, clippy
             - name: Check Code Style
               uses: actions-rs/cargo@v1
-              command: fmt --check
+              with:
+                  command: fmt --check
             - name: Run Unit Tests
               uses: actions-rs/cargo@v1
-              command: test
+              with:
+                  command: test
             - name: Build Image
               uses: docker/build-push-action@v5
               with:
