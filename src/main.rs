@@ -124,6 +124,10 @@ async fn init_db_pool() -> anyhow::Result<PgPool> {
     Ok(pool)
 }
 
+async fn health() -> &'static str {
+    "healthy"
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     match dotenvy::dotenv() {
@@ -216,6 +220,7 @@ async fn main() -> std::io::Result<()> {
                     .wrap(actix_governor::Governor::new(&rate_limit_config))
                     .service(api::devices::register_user_device),
             )
+            .route("/health", web::get().to(health))
             .wrap(actix_web::middleware::Logger::new("%a %r %s %{User-Agent}i"))
     })
     .bind(("0.0.0.0", 8080))?

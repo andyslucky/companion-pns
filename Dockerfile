@@ -6,7 +6,9 @@ RUN cargo fmt --check --verbose
 RUN cargo build --locked --release
 
 # Create runner
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim as runner
+RUN apt-get update && apt-get upgrade -y && apt-get -y install curl
+HEALTHCHECK CMD curl -f http://localhost:8080/health || exit 1
 WORKDIR /app
 # Copy db, ui, and release application
 COPY --from=builder /app/db ./db
