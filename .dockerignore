@@ -4,3 +4,7 @@
 .fleet
 .github
 .gitignore
+.rustfmt.toml
+Dockerfile
+.dockerignore
+.git
