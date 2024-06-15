@@ -12,7 +12,7 @@ use actix_web::{
     web::{self, Data},
     HttpMessage,
 };
-use log::{error, info};
+use log::info;
 use sqlx::PgPool;
 use std::{
     env,
@@ -44,8 +44,8 @@ where
 {
     type Response = ServiceResponse<B>;
     type Error = actix_web::error::Error;
-    type InitError = ();
     type Transform = UserAuthTokenServiceMiddleware<S>;
+    type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
@@ -71,13 +71,8 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let token_keys: &Data<TokenKeys> = req.app_data::<Data<TokenKeys>>().expect("Could not find token keys");
-        match UserAuthToken::from_service_request(&req, &token_keys.decoding_key) {
-            Ok(api_token) => {
-                req.extensions_mut().insert(api_token);
-            }
-            Err(e) => {
-                error!("Error reading user auth token from cookie {:?}", e);
-            }
+        if let Ok(api_token) = UserAuthToken::from_service_request(&req, &token_keys.decoding_key) {
+            req.extensions_mut().insert(api_token);
         }
         self.service.call(req)
     }
@@ -100,8 +95,8 @@ where
 {
     type Response = ServiceResponse<B>;
     type Error = actix_web::error::Error;
-    type InitError = ();
     type Transform = ApiTokenServiceMiddleware<S>;
+    type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
@@ -141,28 +136,24 @@ where
         // Task to see if user is enabled
         let db_pool = req.app_data::<web::Data<PgPool>>().cloned().unwrap();
         let user_enabled = async move {
-            match user {
-                Some(val) => {
-                    return db::user_is_enabled(&db_pool, &val)
-                        .await
-                        .map_err(|e| match e.root_cause().downcast_ref::<FetchUserError>() {
-                            Some(FetchUserError::UserNotFound) => ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied."),
-                            _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "An error occurred"),
-                        });
-                }
+            return match user {
+                Some(val) => db::user_is_enabled(&db_pool, &val)
+                    .await
+                    .map_err(|e| match e.root_cause().downcast_ref::<FetchUserError>() {
+                        Some(FetchUserError::UserNotFound) => ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied."),
+                        _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "An error occurred"),
+                    }),
                 // If there is no username, then the token is missing and the request is Unauthorized
-                None => {
-                    return Err(ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied").into());
-                }
-            }
+                None => Err(ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied").into()),
+            };
         };
         let fut = self.service.call(req);
         return Box::pin(async move {
-            if !user_enabled.await? {
-                return Err(ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied").into());
+            return if !user_enabled.await? {
+                Err(ErrorResponse::new(StatusCode::UNAUTHORIZED, "Access denied").into())
             } else {
-                return Ok(fut.await?);
-            }
+                Ok(fut.await?)
+            };
         });
     }
 }
