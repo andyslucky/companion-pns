@@ -6,22 +6,20 @@ mod serialization;
 use actix_files::Files;
 use actix_web::{
     cookie::{time::OffsetDateTime, Cookie},
-    dev::{Service, ServiceResponse},
-    error::ErrorUnauthorized,
+    dev::Service,
     get, route, web,
     web::Data,
     App, HttpMessage, HttpResponse, HttpServer,
 };
+use actix_web_lab::middleware::from_fn;
 use anyhow::Context;
 use config::AppConfig;
-use futures::future::{
-    ready,
-    Either::{Left, Right},
-};
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use log::info;
-use security::{user_auth_token::*, ApiTokenService, UserAuthTokenService};
+use security::user_auth_token::*;
 use sqlx::{migrate::Migrator, postgres::PgPool};
+use std::collections::HashSet;
+use std::io::Error as IoError;
 use std::{ops::Deref, path::Path};
 use tera::Tera;
 
@@ -79,7 +77,7 @@ async fn logout() -> HttpResponse {
         .finish();
 }
 
-#[route("/dashboard", method = "GET", method = "POST")]
+#[route("/dashboard", method = "GET", method = "POST", wrap = "from_fn(security::require_user_auth)")]
 async fn dashboard(user_auth_token: web::ReqData<UserAuthToken>, tera_context: web::ReqData<tera::Context>, tera: Data<Tera>) -> HttpResponse {
     let mut context = tera::Context::new();
     context.extend((*tera_context).clone());
@@ -118,22 +116,22 @@ async fn main() -> std::io::Result<()> {
         }
         _ => {}
     }
-    let app_config = AppConfig::load().map_err(std::io::Error::other)?;
+    let app_config = AppConfig::load().map_err(IoError::other)?;
 
     app_config.log_config.init_logger();
 
     let pool: PgPool = init_db_pool(&app_config)
         .await
         .context("Failed to connect to database")
-        .map_err(std::io::Error::other)?;
+        .map_err(IoError::other)?;
 
-    let rate_limit_config = security::create_gov_config().map_err(std::io::Error::other)?;
-    let token_keys = app_config.encoding_config.encoding_keys().map_err(std::io::Error::other)?;
+    let rate_limit_config = security::create_gov_config(&app_config).map_err(IoError::other)?;
+    let token_keys = app_config.encoding_config.encoding_keys().map_err(IoError::other)?;
 
     HttpServer::new(move || {
         App::new()
             .app_data(Data::new(token_keys.clone()))
-            .app_data(Data::new(Tera::new("ui/templates/**/*.html").expect("")))
+            .app_data(Data::new(Tera::new("ui/templates/**/*.html").unwrap()))
             .app_data(Data::new(pool.clone()))
             .service(Files::new("/static", "./ui/static").show_files_listing())
             .service(web::redirect("/", "/ui/"))
@@ -141,32 +139,13 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/ui")
                     .wrap_fn(|req, srv| {
-                        let authorized = {
-                            let extensions = req.extensions();
-                            extensions.get::<UserAuthToken>().is_some()
-                        };
-
-                        if !authorized && req.path() == "/ui/dashboard" {
-                            Right(ready(Ok(ServiceResponse::new(
-                                req.into_parts().0,
-                                HttpResponse::TemporaryRedirect().append_header(("Location", "/ui/login")).finish(),
-                            ))))
-                        } else if authorized && req.path() == "/ui/login" {
-                            Right(ready(Ok(ServiceResponse::new(
-                                req.into_parts().0,
-                                HttpResponse::TemporaryRedirect().append_header(("Location", "/ui/dashboard")).finish(),
-                            ))))
-                        } else {
-                            Left(srv.call(req))
-                        }
-                    })
-                    .wrap_fn(|req, srv| {
                         let mut context = tera::Context::new();
                         context.insert(ACTIVE_ROUTE, req.path());
                         req.extensions_mut().insert(context);
                         srv.call(req)
                     })
-                    .wrap(UserAuthTokenService::new())
+                    .wrap(from_fn(security::redirect_login_if_already_authenticated))
+                    .wrap(from_fn(security::parse_user_auth_token))
                     .service(home)
                     .service(login)
                     .service(logout)
@@ -174,18 +153,12 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/users")
-                    .wrap_fn(|req, srv| {
-                        let authorized = {
-                            let extensions = req.extensions();
-                            extensions.get::<UserAuthToken>().is_some()
-                        };
-                        if authorized || (req.path() == "/users/login" || req.path() == "/users/register" || req.path() == "/users/username-available") {
-                            Left(srv.call(req))
-                        } else {
-                            Right(ready(Err(ErrorUnauthorized("Access denied"))))
-                        }
-                    })
-                    .wrap(UserAuthTokenService::new())
+                    .wrap(from_fn(security::require_user_auth_excluding_endpoints(HashSet::from([
+                        "/users/login",
+                        "/users/register",
+                        "/users/username-available",
+                    ]))))
+                    .wrap(from_fn(security::parse_user_auth_token))
                     .service(api::users::create_api_token)
                     .service(api::users::user_api_tokens)
                     .service(api::users::delete_api_token)
@@ -196,7 +169,7 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api")
-                    .wrap(ApiTokenService::new())
+                    .wrap(from_fn(security::require_valid_api_token))
                     .wrap(actix_governor::Governor::new(&rate_limit_config))
                     .service(api::devices::register_user_device),
             )

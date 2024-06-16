@@ -20,6 +20,18 @@ impl ErrorResponse {
             message: String::from(message.as_ref()),
         };
     }
+
+    pub fn internal_server_error<S: AsRef<str>>(msg: S) -> ErrorResponse {
+        return ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, msg);
+    }
+
+    pub fn unauthorized<S: AsRef<str>>(msg: S) -> ErrorResponse {
+        return ErrorResponse::new(StatusCode::UNAUTHORIZED, msg);
+    }
+
+    pub fn bad_request<S: AsRef<str>>(msg: S) -> ErrorResponse {
+        return ErrorResponse::new(StatusCode::BAD_REQUEST, msg);
+    }
 }
 
 impl Display for ErrorResponse {

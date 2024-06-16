@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::db;
-use actix_web::{http::StatusCode, post, web, HttpResponse};
+use actix_web::{post, web, HttpResponse};
 use serde::Deserialize;
 use sqlx::PgPool;
 
@@ -35,10 +35,8 @@ async fn register_user_device(
 ) -> actix_web::Result<HttpResponse> {
     db::register_device(&**db_pool, &api_token.sub, &request.device_id, &request.device_platform)
         .await
-        .map_err(|e| match e.root_cause().downcast_ref::<sqlx::error::Error>() {
-            Some(sqlx::error::Error::Database(dbe)) if dbe.is_unique_violation() => {
-                ErrorResponse::new(StatusCode::BAD_REQUEST, "Device already registered.").into()
-            }
+        .map_err(|e| match e.downcast_ref::<sqlx::error::Error>() {
+            Some(sqlx::error::Error::Database(dbe)) if dbe.is_unique_violation() => ErrorResponse::bad_request("Device already registered.").into(),
             _ => actix_web::error::ErrorInternalServerError("An error occurred while registering"),
         })?;
     Ok(HttpResponse::Ok().json("Registered"))

@@ -11,6 +11,12 @@ pub struct AppConfig {
     #[config(env = "PORT", default = 8080)]
     pub port: u16,
 
+    #[config(env = "REQUEST_RATE_LIMIT", default = 20)]
+    pub request_rate_limit: u32,
+
+    #[config(env = "REQUEST_RATE_LIMIT_TIME", default = 3)]
+    pub request_rate_limit_time: u64,
+
     #[config(nested)]
     pub log_config: LogConfig,
 
