@@ -19,6 +19,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::config::AppConfig;
+use crate::security::user_auth_token::Role;
 use crate::{TokenKeys, UserAuthToken};
 
 use self::api_token::ApiToken;
@@ -97,6 +98,19 @@ pub async fn require_valid_api_token(req: ServiceRequest, next: Next<BoxBody>) -
         next.call(req).await
     } else {
         Err(ErrorResponse::unauthorized("Access denied.").into())
+    }
+}
+
+pub async fn user_is_admin(req: ServiceRequest, next: Next<BoxBody>) -> Result<ServiceResponse, Error> {
+    let user_is_admin = req
+        .extensions()
+        .get::<UserAuthToken>()
+        .ok_or(ErrorResponse::unauthorized("Access denied"))
+        .map(|token| token.roles.contains(&Role::ADMIN))?;
+    if !user_is_admin {
+        Err(ErrorResponse::forbidden("Operation not allowed.").into())
+    } else {
+        next.call(req).await
     }
 }
 

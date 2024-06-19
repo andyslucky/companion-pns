@@ -4,10 +4,14 @@ use confique::Config;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
+use std::net::Ipv4Addr;
 use std::path::PathBuf;
 
 #[derive(Config)]
 pub struct AppConfig {
+    #[config(env = "ADDRESS", default = "0.0.0.0")]
+    pub address: Ipv4Addr,
+
     #[config(env = "PORT", default = 8080)]
     pub port: u16,
 

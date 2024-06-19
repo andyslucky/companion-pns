@@ -20,7 +20,7 @@
         checkUsernameAvailableReq = $.ajax({
             url: "/users/username-available",
             method: "GET",
-            data: { userName }
+            data: {userName}
         }).done(available => {
             if (!available) {
                 $("#registerUsernameFeedback").text("Please choose a difference username.")
@@ -61,7 +61,7 @@
             url: "/users/login",
             method: "POST",
             contentType: "application/json",
-            data: JSON.stringify({ userId: $("#loginUserId").val(), password: $("#loginPassword").val() })
+            data: JSON.stringify({userId: $("#loginUserId").val(), password: $("#loginPassword").val()})
         }).done(() => {
             hideLoadingPanel();
             window.location = "/ui/dashboard";
@@ -79,7 +79,7 @@
             url: "/users/register",
             method: "POST",
             contentType: "application/json",
-            data: JSON.stringify({ userId: $("#registerUserIdBox").val(), password: $("#registerPassword").val() })
+            data: JSON.stringify({userId: $("#registerUserIdBox").val(), password: $("#registerPassword").val()})
         }).done(() => {
             hideLoadingPanel();
             window.location = "/ui/dashboard";
@@ -137,7 +137,7 @@
 <div style="display: flex; padding: 20px; align-items: center; flex-direction: column;">
     <div class="bg-light container" style="width: 300px; padding: 10px; border-radius: 5px; position: relative;">
         <div id="loadingPanel" class="d-flex justify-content-center align-items-center bg-light visually-hidden"
-            style="z-index: 100; position: absolute; height: 100%; width: 100%; margin: -10px; opacity: 0.6;">
+             style="z-index: 100; position: absolute; height: 100%; width: 100%; margin: -10px; opacity: 0.6;">
             <div class="spinner-grow text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
@@ -146,23 +146,23 @@
             <div class="mb-3">
                 <label for="loginUserId" class="form-label">Username</label>
                 <input
-                    type="username"
-                    class="form-control"
-                    id="loginUserId"
-                    minlength="4"
-                    onkeyup="$('#loginUserId').toggleClass('is-invalid', $('#loginUserId').val().length < 4); updateLoginButtonDisabled();"
-                    required
+                        type="username"
+                        class="form-control"
+                        id="loginUserId"
+                        minlength="4"
+                        onkeyup="$('#loginUserId').toggleClass('is-invalid', $('#loginUserId').val().length < 4); updateLoginButtonDisabled();"
+                        required
                 />
             </div>
             <div class="mb-3">
                 <label for="loginPassword" class="form-label">Password</label>
                 <input
-                    type="password"
-                    class="form-control"
-                    id="loginPassword"
-                    minlength="4"
-                    onkeyup="$('#loginPassword').toggleClass('is-invalid', $('#loginPassword').val().length < 4); updateLoginButtonDisabled();"
-                    required
+                        type="password"
+                        class="form-control"
+                        id="loginPassword"
+                        minlength="4"
+                        onkeyup="$('#loginPassword').toggleClass('is-invalid', $('#loginPassword').val().length < 4); updateLoginButtonDisabled();"
+                        required
                 />
                 <div class="invalid-feedback" id="loginValidationFeedback">
                     Please ensure username and password meet minimum length requirements.
@@ -174,26 +174,26 @@
             <div class="mb-3">
                 <label for="registerUserIdBox" class="form-label">Username</label>
                 <input type="username" class="form-control" id="registerUserIdBox"
-                    onkeyup="validateUserName(); updateRegisterButtonDisabled();" name="userId" minlength="3"
-                    maxlength="64" required>
+                       onkeyup="validateUserName(); updateRegisterButtonDisabled();" name="userId" minlength="3"
+                       maxlength="64" required>
                 <div id="registerUsernameFeedback" class="invalid-feedback"></div>
             </div>
             <div class="mb-3">
                 <label for="registerPassword" class="form-label">Password</label>
                 <input type="password" class="form-control" id="registerPassword" name="password"
-                    onkeyup="validatePasswords(); updateRegisterButtonDisabled();" minlength="4" maxlength="32"
-                    required>
+                       onkeyup="validatePasswords(); updateRegisterButtonDisabled();" minlength="4" maxlength="32"
+                       required>
             </div>
             <div class="mb-3" id="confirmPassGroup">
                 <label for="registerConfirmPass" class="form-label">Confirm Password</label>
                 <input type="password" class="form-control" id="registerConfirmPass"
-                    onkeyup="validatePasswords(); updateRegisterButtonDisabled();" minlength="4" maxlength="32"
-                    required>
+                       onkeyup="validatePasswords(); updateRegisterButtonDisabled();" minlength="4" maxlength="32"
+                       required>
                 <div id="registerPasswordsFeedback" class="invalid-feedback"></div>
             </div>
         </form>
 
-        <hr />
+        <hr/>
         <div class="d-flex" style="justify-content: space-between;" id="loginButtonGroup">
             <span class="form-text">Click <a href="#" onclick="toggleRegister();">here</a> to Register.</span>
             <button id="loginButton" class="btn btn-primary" onclick="login();" disabled>Login</button>

@@ -1,3 +1,4 @@
+use actix_web::web::ServiceConfig;
 use actix_web::{http::StatusCode, HttpResponse};
 use serde::Serialize;
 use std::fmt::Display;
@@ -29,6 +30,10 @@ impl ErrorResponse {
         return ErrorResponse::new(StatusCode::UNAUTHORIZED, msg);
     }
 
+    pub fn forbidden<S: AsRef<str>>(msg: S) -> ErrorResponse {
+        return ErrorResponse::new(StatusCode::FORBIDDEN, msg);
+    }
+
     pub fn bad_request<S: AsRef<str>>(msg: S) -> ErrorResponse {
         return ErrorResponse::new(StatusCode::BAD_REQUEST, msg);
     }
@@ -41,7 +46,22 @@ impl Display for ErrorResponse {
 }
 
 impl actix_web::ResponseError for ErrorResponse {
-    fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
+    fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
         return HttpResponse::build(self.status).json(self);
     }
+}
+
+pub fn configure_user_api(service_config: &mut ServiceConfig) {
+    service_config
+        .service(users::create_api_token)
+        .service(users::user_api_tokens)
+        .service(users::delete_api_token)
+        .service(users::add_admin_user)
+        .service(users::register_user)
+        .service(users::user_login)
+        .service(users::check_username_available);
+}
+
+pub fn configure_api(service_config: &mut ServiceConfig) {
+    service_config.service(devices::register_user_device);
 }

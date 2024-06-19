@@ -14,6 +14,8 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgRow, FromRow, PgPool};
 
+use actix_web_lab::middleware::from_fn;
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct UserLoginSignUpRequest {
@@ -25,7 +27,7 @@ struct UserLoginSignUpRequest {
 pub async fn register_user(
     request_body: web::Json<UserLoginSignUpRequest>,
     token_keys: web::Data<TokenKeys>,
-    db_pool: web::Data<sqlx::postgres::PgPool>,
+    db_pool: web::Data<PgPool>,
 ) -> actix_web::Result<HttpResponse> {
     let user = db::create_user(&**db_pool, &request_body.user_id, &request_body.password).await.map_err(|e| {
         match e.root_cause().downcast_ref::<sqlx::error::Error>() {
@@ -96,7 +98,7 @@ fn create_token_response(user: &User, token_keys: &TokenKeys) -> (UserAuthToken,
 pub struct CreateApiTokenRequest {
     token_name: String,
     #[serde(deserialize_with = "crate::serialization::deserialize_offset_datetime")]
-    token_expiration: sqlx::types::time::OffsetDateTime,
+    token_expiration: OffsetDateTime,
 }
 
 #[post("/create-api-token")]
@@ -184,16 +186,8 @@ async fn user_api_tokens(user_auth_token: web::ReqData<UserAuthToken>, db_pool: 
 struct AddAdminRequest {
     user_id: String,
 }
-#[post("/add-admin")]
-async fn add_admin_user(
-    request: web::Form<AddAdminRequest>,
-    user_auth_token: web::ReqData<UserAuthToken>,
-    db_pool: web::Data<PgPool>,
-) -> actix_web::Result<HttpResponse> {
-    if !user_auth_token.roles.contains(&Role::ADMIN) {
-        return Ok(HttpResponse::Forbidden().json("Access denied"));
-    }
-
+#[post("/add-admin", wrap = "from_fn(crate::security::user_is_admin)")]
+async fn add_admin_user(request: web::Form<AddAdminRequest>, db_pool: web::Data<PgPool>) -> actix_web::Result<HttpResponse> {
     sqlx::query("INSERT INTO user_roles (user_name, role_name) VALUES($1, $2)")
         .bind(&request.user_id)
         .bind(Role::ADMIN.to_string())

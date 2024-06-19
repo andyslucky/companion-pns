@@ -26,7 +26,9 @@ pub async fn create_default_admin_user(db_pool: &PgPool, user_id: &String, passw
         INSERT INTO users (user_name, phash) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING user_name
         )
         INSERT INTO user_roles (user_name, role_name)
-        SELECT user_name, 'ADMIN' FROM cteNewUser;
+        SELECT user_name, 'ADMIN' FROM cteNewUser
+        UNION ALL
+        SELECT user_name, 'USER' FROM cteNewUser;
         "#,
     )
     .bind(user_id)

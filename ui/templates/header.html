@@ -1,7 +1,8 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="/ui/">Abacus Notification Services</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+                aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
@@ -15,7 +16,7 @@
                 </li>
                 <li>
                     <!-- Show dashboard if user is authenticated -->
-                    {% if user_auth and active_route == "/ui/dashboard"  %}
+                    {% if user_auth and active_route == "/ui/dashboard" %}
                     <a class="nav-link active" aria-current="page" href="/ui/dashboard">Dashboard</a>
                     {% elif user_auth %}
                     <a class="nav-link" href="/ui/dashboard">Dashboard</a>
